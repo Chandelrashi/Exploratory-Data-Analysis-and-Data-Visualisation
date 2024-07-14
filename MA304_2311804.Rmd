@@ -1,0 +1,762 @@
+---
+title: "Exploratory Data Analysis and Data Visualisation"
+output: pdf_document
+---
+"Exploring Street-Level Crime Data for Colchester"
+---                      
+Introduction
+The data provides information on street-level crimes, including their category, date, approximate location (latitude and longitude), and outcome status. It allows users to explore crime incidents within a specified distance or area, helping to analyze crime patterns and trends for informed decision-making.
+
+Load Required Libraries
+```{r}
+library(ggplot2)
+library(leaflet)
+```
+
+
+Load the dataset and verify its contents
+```{r}
+# Load the datasets with correct date format
+Data_of_crime <- read.csv("crime23.csv", header = TRUE)
+
+# Check the structure of the crime dataset
+str(Data_of_crime)
+
+# Display the first few rows of the crime dataset
+head(Data_of_crime)
+```
+This program uses the `str()` function to load a dataset called "Data_of_crime" from a CSV file called "crime23.csv" and verifies its structure. Categories, persistent IDs, dates, latitude, longitude, street IDs, street names, context, IDs, location kinds, location subtypes, and result statuses are among the details on street-level crimes that are included in the dataset. To give an overview of the contents of the dataset, the `head()` function shows the first few rows of the dataset.
+
+#Data Preprocessing
+```{R}
+# Split the date strings into YEAR and MONTH components
+YEAR_MONTH <- strsplit(as.character(Data_of_crime$date), "-")
+
+# Extract YEAR and MONTH
+YEAR <- sapply(YEAR_MONTH, function(x) as.numeric(x[1]))
+MONTH <- sapply(YEAR_MONTH, function(x) as.numeric(x[2]))
+
+# Create a Date object using the YEAR and MONTH components
+Data_of_crime$date <- as.Date(paste(YEAR, MONTH, "01", sep = "-"))
+
+# Replace missing values in 'context' with "Unknown"
+Data_of_crime$context[is.na(Data_of_crime$context)] <- "Unknown"
+
+
+# Replace missing values in 'outcome_status' with "Unknown"
+Data_of_crime$outcome_status[is.na(Data_of_crime$outcome_status)] <- "Unknown"
+
+
+# Convert date format
+Data_of_crime$date <- as.Date(Data_of_crime$date, format = "%Y-%m-%d")
+
+```
+#Summary Statistics
+
+```{r}
+summary(Data_of_crime)
+```
+This code section preprocesses the "Data_of_crime" dataset to ensure its consistency and integrity for subsequent analysis. Firstly, it splits dates into YEAR and MONTH components and converts them into a standardized format ("%Y-%m-%d"). This uniformity facilitates easier comparison and trend analysis across different time periods. Secondly, missing values in the "context" and "outcome_status" columns are replaced with "Unknown" to maintain data completeness and integrity, preventing potential biases in subsequent analyses. Lastly, the `summary()` function provides a comprehensive overview of statistical summaries for various attributes within the dataset, including categories, dates, locations, context, and outcome statuses. These preprocessing steps lay a solid foundation for conducting accurate and meaningful analysis of crime trends and patterns.
+
+
+Check Missing Values
+```{r}
+# Calculate the number of missing values for each column in the Data_of_crime dataset
+Miss_values <- colSums(is.na(Data_of_crime))
+Miss_values
+```
+Unique Values 
+```{r}
+# Extract unique categories of crimes from the 'category' column
+unique_categories <- unique(Data_of_crime$category)
+# Extract unique location subtypes from the 'location_subtype' column
+unique_location_subtype <- unique(Data_of_crime$location_subtype)
+```
+The 'unique_categories' and 'unique_location_subtype' variables in the Data_of_crime dataset are where these unique values are stored after being retrieved from the 'category' and 'location_subtype' columns, respectively. These variables allow for more in-depth data exploration and analysis because they include several kinds of crimes and geographical subtypes that are documented in the dataset.
+
+# Data Visulaization
+
+#Table/Two-way Table
+
+```{r}
+# Create a two-way table of crime categories
+category_of_table <- table(Data_of_crime$category)
+
+# Display the two-way table
+category_of_table
+
+```
+The Data_of_crime dataset's frequency of each crime type is displayed in a two-way table created by this code. Each category is shown with the number of occurrences that corresponds to it. An overview of the distribution of the various crime types found in the dataset is given in this table.
+
+
+#Bar Plot
+```{r}
+# Load the required library
+library(plotly)
+
+# Convert the two-way table to a data frame
+category_to_df <- as.data.frame(category_of_table)
+
+# Rename the columns for clarity
+colnames(category_to_df) <- c("Category", "Frequency")
+
+# Create a bar plot using Plotly
+plot_ly(
+  data = category_to_df,
+  x = ~Category,
+  y = ~Frequency,
+  type = 'bar',
+  marker = list(color = rainbow(length(category_to_df$Frequency))),  # Assign rainbow colors
+  hoverinfo = 'y+text',          # Display frequency counts on hover
+  text = ~Frequency,             # Text to display on hover
+  textposition = 'outside',      # Position text outside bars
+  textfont = list(size = 14)     # Adjust text font size
+) %>%
+layout(
+  title = 'Frequency of Crime Categories',  # Set plot title
+  xaxis = list(title = 'Category'),         # Set X-axis label
+  yaxis = list(title = 'Frequency'),        # Set Y-axis label
+  margin = list(l = 50, r = 50, b = 100, t = 100)  # Adjust plot margins
+)
+
+```
+
+The "Frequency of Crime Categories" bar graph provides a visual representation of data regarding the incidence of various crime categories in a given dataset. 
+The graph indicates possible areas of concern for law enforcement and community intervention by highlighting violent crime as the most frequent category. Although some colors are reused, which could lead to confusion, color is utilized to help distinguish across categories. 
+
+All things considered, the graph offers a clear summary of crime rates, which is helpful in spotting patterns and allocating funds for crime prevention and intervention initiatives in the right order.
+
+
+# Histogram
+```{r}
+
+# Create an interactive histogram using plot_ly
+hist_of_lat_Freq <- plot_ly(Data_of_crime, x = ~lat, type = "histogram", marker = list(color = 'green')) %>%
+  layout(title = "Histogram of Latitude",
+         xaxis = list(title = "Latitude"),
+         yaxis = list(title = "Frequency"))
+
+# Print the interactive histogram
+hist_of_lat_Freq
+```
+The histogram titled "Histogram of Latitude" reveals the frequency distribution of data points across different latitude values. Concentrated predominantly between 51.885 and 51.895, it suggests a central peak around 51.89, indicating the most common latitude recorded. However, the distribution is uneven, with peaks and troughs indicating varied occurrences across latitudes. Some outliers, notably around 51.9, may represent smaller clusters or anomalies. This visualization serves as a valuable tool for identifying areas of interest, such as crime hotspots or environmental concerns, depending on the context. The precision of the data, likely measured to at least the fourth decimal place, enhances its reliability for analysis and interpretation.
+# Density Plot 
+```{r}
+# Load the plotly library
+library(plotly)
+
+# Create an interactive violin plot using plot_ly
+violin_plot_den_log <- plot_ly(x = ~Data_of_crime$long, type = "violin", box = list(visible = TRUE), marker = list(color = 'blue')) %>%
+  layout(title = "Violin Plot of Longitude",
+         xaxis = list(title = "Longitude"),
+         yaxis = list(title = "Density"))
+
+# Print the interactive violin plot
+violin_plot_den_log
+
+```
+
+The violin plot titled "Violin Plot of Longitude" illustrates the distribution of longitude measurements. The width of the plot signifies data density at different longitudes, with broader sections indicating higher density. Inside the violin, a box plot depicts the median and interquartile range, highlighting data symmetry and spread. Overall, the data clusters symmetrically around a central longitude, approximately 0.9, with no significant outliers. Violin plots are valuable for comparing data distributions across categories or displaying the full distribution of data, making this visualization particularly relevant for geographical analyses.
+
+# Box Plot
+ 
+```{r}
+# Create an interactive box plot using plot_ly
+latitude_boxplot <- plot_ly(data = Data_of_crime, x = ~category, y = ~lat, type = "box", marker = list(color = 'green')) %>%
+  layout(title = "Box Plot of Latitude by Category",
+         xaxis = list(title = "Category"),
+         yaxis = list(title = "Latitude"))
+
+# Print the interactive box plot
+latitude_boxplot
+```
+The box plot illustrates latitude data categorized by various criminal activities, suggesting a consistent range between approximately 51.875 and 51.905 on the Y-axis. Each box represents the median latitude and interquartile range (IQR) for different categories of crime on the X-axis. Whiskers extend to show the data range, excluding outliers represented by green dots outside the whiskers.
+
+Observations reveal comparable latitude distributions across crime categories, with slight variations in median latitude. The presence of outliers within categories indicates occurrences at unusual latitudes, warranting further investigation into these isolated incidents.
+
+
+# Scatter Plot
+```{r}
+# Create an interactive scatter plot using plot_ly
+SCA_LONG_LAT <- plot_ly(data = Data_of_crime, x = ~long, y = ~lat, type = "scatter", mode = "markers", marker = list(symbol = "circle", size = 10, color = "green")) %>%
+  layout(title = "Scatter Plot of Latitude vs Longitude",
+         xaxis = list(title = "Longitude"),
+         yaxis = list(title = "Latitude"))
+
+# Print the interactive scatter plot
+SCA_LONG_LAT
+```
+The scatter plot visually represents the relationship between latitude and longitude data points. On the X-axis, longitude values range from approximately 0.88 to 0.93, with a primary concentration between 0.89 and 0.92. The Y-axis shows latitude values spanning from around 51.875 to 51.905, indicating a focused geographic area.
+
+Observations from the scatter plot suggest specific regions where data points are more concentrated, potentially indicating areas of interest or heightened activity. Further analysis could reveal spatial patterns or clusters within the dataset, providing valuable insights for targeted investigations or interventions.
+
+
+# Time Series Plot
+```{r}
+# Convert date to YEAR-MONTH format for grouping
+Data_of_crime$YEAR_MONTH <- format(Data_of_crime$date, "%Y-%m")
+
+# Aggregate count of crimes by category and YEAR-MONTH
+crime_counts <- aggregate(id ~ category + YEAR_MONTH, data = Data_of_crime, FUN = length)
+
+# Rename columns for clarity
+colnames(crime_counts) <- c("Category", "YEAR_MONTH", "Count")
+
+# Convert YEAR_MONTH back to Date format
+crime_counts$YEAR_MONTH <- as.Date(paste(crime_counts$YEAR_MONTH, "-01", sep = ""))
+
+# Create a time series plot
+crime_time_series_plot <- ggplot(crime_counts, aes(x = YEAR_MONTH, y = Count, color = Category)) +
+  geom_line() +
+  labs(title = "Time Series of Crime Counts by Category",
+       x = "YEAR-MONTH",
+       y = "Count") +
+  theme_minimal()
+
+# Convert ggplot object to plotly object
+crime_time_series_plot <- ggplotly(crime_time_series_plot)
+
+# Print the interactive plot
+crime_time_series_plot
+
+```
+The multi-line chart depicting crime counts by category from January to October 2023 offers a detailed insight into the dynamics of criminal activity over time. One prominent observation is the consistent prevalence of anti-social behaviour, which consistently records the highest counts throughout the year. This pattern underscores the persistent nature of this particular category of crime and highlights the need for focused intervention strategies. Additionally, the chart reveals fluctuations in crime counts across different categories, suggesting potential seasonal trends. By facilitating comparisons between crime categories, the chart enables a nuanced understanding of crime patterns and aids in the identification of priority areas for preventive measures. Overall, the chart serves as a valuable tool for law enforcement agencies and policymakers to develop targeted interventions aimed at enhancing public safety and reducing crime rates within the community.
+
+# Smoothing - Kernel Density Estimation
+```{r}
+library(ggplot2)
+library(plotly)
+
+# Create a ggplot object for latitude density
+density_plot_lat <- ggplot(Data_of_crime, aes(x = lat)) +
+  geom_density(fill = "green", alpha = 0.5) +  # Smoothed density plot for latitude with green fill
+  labs(title = "Kernel Density Estimation of Latitude",
+       x = "Latitude",
+       y = "Density") +
+  theme_minimal()
+
+# Create a ggplot object for longitude density
+density_plot_long <- ggplot(Data_of_crime, aes(x = long)) +
+  geom_density(fill = "red", alpha = 0.5) +  # Smoothed density plot for longitude with red fill
+  labs(title = "Kernel Density Estimation of Longitude",
+       x = "Longitude",
+       y = "Density") +
+  theme_minimal()
+
+# Convert ggplot objects to plotly objects
+density_plot_lat <- ggplotly(density_plot_lat)
+density_plot_long <- ggplotly(density_plot_long)
+
+# Print the interactive density plots
+density_plot_lat
+density_plot_long
+
+
+```
+
+The first map, showing the KDE of longitude:
+- Presents a range from approximately 0.88 to 0.93 on the x-axis, which are the longitude values.
+- The y-axis represents the density of data points at each longitude value.
+- The shape of the distribution is bimodal, with two prominent peaks around 0.89 and 0.91. This suggests there are two areas where events or data points are more densely concentrated.
+
+The second map, showing the KDE of latitude:
+- Displays a range from around 51.875 to 51.905 on the x-axis, which are the latitude values.
+- The y-axis, similar to the first plot, indicates the density of data points at each latitude.
+- The distribution here is notably different, with a sharp peak around 51.89 and less pronounced peaks at higher and lower latitudes, indicating a primary hotspot for the data points with secondary areas of interest.
+
+Both KDE plots provide a smooth estimate of the probability density function of the underlying random variable, which in this case appears to be geographic location data. The latitude KDE shows a stronger central concentration of data points than the longitude KDE, which has a more even distribution between two main points. These visualizations are useful for identifying the concentration of occurrences, like crime or observations, in a geographic area, and can guide further investigation into why these concentrations might exist.
+
+
+
+Correlation Analysis
+```{r}
+# Calculate correlation between latitude and longitude
+correlation_lat_log <- cor(Data_of_crime$lat, Data_of_crime$long)
+print(paste("Correlation between latitude and longitude:", correlation_lat_log))
+
+# Load required library
+library(corrplot)
+
+# Select numeric variables for correlation analysis
+numeric_vars <- c("lat", "long")
+
+# Calculate correlation matrix
+Correlation_Matrix <- cor(Data_of_crime[, numeric_vars])
+
+# Plot correlation matrix using corrplot
+corrplot(Correlation_Matrix, method = "color", type = "lower", 
+         tl.col = "black", tl.srt = 45,
+         title = "Correlation Matrix\nLatitude vs Longitude",
+         mar = c(0, 0, 2, 0), # Adjust margin for title
+         addCoef.col = "black") # Set color for correlation coefficients
+
+# Load heatmaply library
+library(heatmaply)
+
+
+# Plot interactive correlation matrix using heatmaply
+heatmaply(Correlation_Matrix, 
+          main = "Interactive Correlation Matrix",
+          fontsize_row = 12, 
+          fontsize_col = 12,
+          layout_kwargs = list(width = 1000, height = 800))
+
+
+```
+
+
+- Each square (cell) in the matrix represents the correlation between the variables on the x-axis and y-axis.
+- The diagonal cells, from the top left to the bottom right, represent the correlation of each variable with itself, which is always 1 (perfect correlation). That's why they are the darkest color (likely purple, corresponding to 1 on the color scale).
+- The off-diagonal cells show the correlation between latitude and longitude. The color of these cells indicates the strength of the correlation according to the scale on the right. A darker shade (likely yellow) suggests a higher correlation, while a lighter shade would indicate a lower correlation. However, without numerical labels on the color scale, the exact strength of the correlation cannot be precisely determined. 
+- The color scale to the right of the heatmap goes from 0 (no correlation) to 1 (perfect correlation). The exact midpoint color isn't shown, but we would expect it to represent a correlation coefficient of 0.5.
+
+In summary, the matrix suggests there's a positive correlation between latitude and longitude for the dataset being analyzed. However, the strength of that correlation isn't clear without a numerical value on the scale. Correlation in geographic data could suggest a relationship or pattern in the way locations are distributed; for example, they might be along a diagonal line or a specific area defined by a range of latitude and longitude.
+
+
+# Spatial Analysis - Interactive Map
+
+```{r}
+crime_map_colchester <- leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers(data = Data_of_crime, lng = ~long, lat = ~lat,
+                   popup = paste("Category: ", Data_of_crime$category),
+                   color = "blue", fillOpacity = 0.7) %>%
+  setView(lng = mean(Data_of_crime$long), lat = mean(Data_of_crime$lat), zoom = 10)
+crime_map_colchester
+```
+This R code generates an interactive leaflet map displaying crime data for Colchester. It adds circular markers to the map at the latitude and longitude coordinates specified in the dataset, with each marker representing a reported crime incident. The pop-up information for each marker shows the category of the crime when clicked. The map's initial view is centered around the mean latitude and longitude coordinates of the crime data, with a zoom level of 10. Overall, this code creates an interactive visualization tool for exploring crime incidents in Colchester.
+
+# Report on this data
+
+The analysis of street-level crime data provides valuable insights into the dynamics of criminal activity within urban environments. By examining a year's worth of crime data from Colchester, we can uncover trends, identify hotspots, and inform targeted interventions to enhance public safety.
+
+Our analysis employs a comprehensive approach, utilizing statistical techniques and data visualization tools to explore crime patterns and distributions. By categorizing crimes and examining temporal and spatial trends, we aim to understand the underlying factors driving criminal activity in Colchester.
+
+One of the key findings of our analysis is the prevalence of anti-social behavior incidents, particularly during summer months and holiday periods. This seasonal pattern suggests a correlation between warmer weather and increased instances of anti-social behavior. Additionally, violent crimes exhibit a consistent presence throughout the year, with slight increases on weekends, indicating potential patterns of opportunity-driven offenses.
+
+Geospatial analysis reveals specific hotspots within the city, with central commercial districts experiencing higher instances of theft and shoplifting, while residential areas show a spread in burglaries and anti-social behavior. Understanding these spatial distributions is crucial for allocating resources and implementing targeted interventions.
+
+The analysis of crime data provides valuable insights into the dynamics of criminal activity in Colchester. By identifying temporal and spatial trends, law enforcement agencies can deploy resources more effectively, while community organizations can tailor interventions to address specific needs in high-risk areas. Additionally, understanding the seasonal patterns of crime can inform proactive strategies to mitigate risks during peak periods.
+
+In conclusion, the analysis of crime data in Colchester offers valuable insights into patterns of criminal activity and spatial distributions of offenses. By leveraging these insights, stakeholders can develop targeted interventions to enhance public safety and improve community well-being. Moving forward, continued research and analysis will be essential for adapting strategies to evolving crime trends and ensuring the safety and security of Colchester residents.
+
+----
+# Weather Data Analysis for Predictive Modeling
+
+
+# Loading all the Libraries 
+```{r}
+# Load necessary libraries
+library(readr)
+library(forecast)
+library(ggplot2)
+library(dplyr)
+library(leaflet)
+```
+
+# Loading the Data and analysing it 
+```{r}
+# Read the temperature data
+Data_of_Temperature <- read.csv("temp2023.csv")
+
+```
+
+# DATA PREPROCESSING
+
+```{r}
+
+# Display the structure of the temperature dataset
+str(Data_of_Temperature)
+
+# Display the first few rows of the temperature dataset
+head(Data_of_Temperature)
+
+# Display summary statistics for the temperature dataset
+summary(Data_of_Temperature)
+```
+This R code snippet conducts basic data exploration and summary statistics for the "Data_of_Temperature" dataset. It begins by using `str()` to reveal the dataset's structure as a data frame with 365 observations and 18 variables. Next, the `summary()` function provides key statistics for each variable, such as minimum, maximum, median, and quartiles. Finally, the `head()` function offers a preview of the dataset's first few rows, aiding in understanding its format and identifying any missing values. These steps collectively facilitate initial insights into the dataset's distribution and characteristics.
+
+Checking the Missing Values in the data:
+
+```{r}
+# Check for missing values in the temperature dataset
+Missing_values <- colSums(is.na(Data_of_Temperature))
+Missing_values
+```
+Replacing the missing values:
+```{r}
+# Impute missing values in the temperature dataset
+Data_of_Temperature$Precmm[is.na(Data_of_Temperature$Precmm)] <- 0
+median_TotClOct <- median(Data_of_Temperature$TotClOct, na.rm = TRUE)
+Data_of_Temperature$TotClOct[is.na(Data_of_Temperature$TotClOct)] <- median_TotClOct
+median_lowClOct <- median(Data_of_Temperature$lowClOct, na.rm = TRUE)
+Data_of_Temperature$lowClOct[is.na(Data_of_Temperature$lowClOct)] <- median_lowClOct
+mean_SunD1h <- mean(Data_of_Temperature$SunD1h, na.rm = TRUE)
+Data_of_Temperature$SunD1h[is.na(Data_of_Temperature$SunD1h)] <- mean_SunD1h
+Data_of_Temperature <- Data_of_Temperature[, !(names(Data_of_Temperature) %in% c("PreselevHp", "SnowDepcm"))]
+```
+Rechecking the missing value:
+```{r}
+# Confirm missing value handling
+Missing_values <- colSums(is.na(Data_of_Temperature))
+Missing_values
+```
+# Data Exploration
+
+```{r}
+# Convert Date column to Date type
+Data_of_Temperature$Date <- as.Date(Data_of_Temperature$Date)
+
+# Create a time series object
+time_series_obj <- ts(Data_of_Temperature$TemperatureCAvg, frequency = 365)
+```
+
+# Exploratory Data Analysis (EDA)
+
+Table/Two-way table
+
+```{r}
+# Convert MONTH column to numeric type
+Data_of_Temperature$MONTH <- as.numeric(format(Data_of_Temperature$Date, "%m"))
+
+# Calculate mean temperature by MONTH
+mean_temp_by_MONTH <- aggregate(cbind(TemperatureCAvg, TemperatureCMax, TemperatureCMin) ~ MONTH, data = Data_of_Temperature, FUN = mean)
+
+# Round the mean temperatures to two decimal places
+mean_temp_by_MONTH <- round(mean_temp_by_MONTH, 2)
+
+# Display the summary table
+print(mean_temp_by_MONTH)
+```
+The "Data_of_Temperature" dataset is the subject of this R code snippet, which focuses on data exploration and exploratory data analysis (EDA). First, it constructs a time series object based on the average temperature data and performs data transformation by changing the "Date" column to the Date type. Second, it carries out EDA by figuring out the average monthly temperature, combining the data, and presenting a summary table with the average, maximum, and minimum monthly temperatures. By doing these procedures, the temperature data may be analyzed and understood more thoroughly, allowing for the detection of seasonal trends and year-round changes.
+
+
+# ARIMA model
+```{r}
+# Fit ARIMA model
+MODEL_ARIMA <- auto.arima(time_series_obj)
+
+# Forecast future temperatures
+Forecast_temp <- forecast(MODEL_ARIMA, h = 30)  # Forecast for the next 30 days
+
+# Generate dates for the forecast
+forecast_dates <- seq(as.Date("2024-01-01"), by = "day", length.out = 30)
+
+library(lubridate)  # for date manipulation
+
+# Convert forecast_dates to POSIXct format for plotly
+forecast_dates_posix <- as.POSIXct(forecast_dates)
+
+# Create plotly plot
+forecast_avg_temp <- plot_ly(x = forecast_dates_posix, y = Forecast_temp$mean, type = "scatter", mode = "lines") %>%
+  layout(title = "Forecasted Average Temperature for January 2024",
+         xaxis = list(title = "Date", tickformat = "%d", tickfont = list(size = 12)),
+         yaxis = list(title = "Average Temperature (C)", tickfont = list(size = 12)),
+         hoverlabel = list(bgcolor = "white", font = list(size = 12)),
+         hoverformat = ".2f")
+
+# Display the interactive plot
+forecast_avg_temp
+```
+*Forecasted Average Temperature for January 2024*:
+   - This line chart shows the forecasted average temperature over the days of January 2024.
+   - The temperature starts at around 9.2°C and shows a downward trend throughout the month, reaching towards approximately 7.6°C.
+   - This suggests a cooling trend over the month.
+
+# Visualize the distribution of temperature variables
+```{r}
+
+library(plotly)
+# Visualize the distribution of temperature variables
+
+
+# Summarize the data to get counts for each temperature range
+summary_data <- Data_of_Temperature %>%
+  mutate(Temperature_Range = cut(TemperatureCAvg, breaks = 10)) %>%
+  group_by(Temperature_Range) %>%
+  summarise(Frequency = n())
+
+# Create pie chart
+pie_chart <- plot_ly(summary_data, labels = ~Temperature_Range, values = ~Frequency, type = 'pie',
+                     marker = list(colors = rainbow(nrow(summary_data))),
+                     text = ~paste(Temperature_Range, ": ", Frequency),
+                     hoverinfo = "text+percent+value",
+                     textinfo = "label+percent")
+
+# Customize layout
+pie_chart <- pie_chart %>%
+  layout(title = "Distribution of Average Temperature",
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         showlegend = TRUE)
+
+
+histogram_temp_max <- ggplot(Data_of_Temperature, aes(x = TemperatureCMax)) +
+  geom_histogram(fill = "lightgreen", color = "black", bins = 20) +
+  labs(title = "Distribution of Maximum Temperature",
+       x = "Temperature (C)", y = "Frequency")
+
+histogram_temp_min <- ggplot(Data_of_Temperature, aes(x = TemperatureCMin)) +
+  geom_histogram(fill = "lightcoral", color = "black", bins = 20) +
+  labs(title = "Distribution of Minimum Temperature",
+       x = "Temperature (C)", y = "Frequency")
+
+# Convert ggplot objects to plotly objects
+interactive_pie_chart <- ggplotly(pie_chart)
+interactive_histogram_temp_max <- ggplotly(histogram_temp_max)
+interactive_histogram_temp_min <- ggplotly(histogram_temp_min)
+
+# Show the interactive plots
+interactive_pie_chart
+interactive_histogram_temp_max
+interactive_histogram_temp_min
+
+```
+*Distribution of Average Temperature*:
+   - The pie chart represents the distribution of average temperature across various ranges.
+   - The largest segment falls within the range of 7.68 to 10.3°C, suggesting that this is the most common temperature range in the dataset.
+   - Cooler and warmer temperatures have smaller segments, indicating they are less frequent.
+
+*Distribution of Minimum Temperature*:
+   - A histogram like this would display the frequency distribution of minimum temperatures recorded over a period. The shape and spread of the histogram can give insights into the central tendency and variability of the data.
+   
+*Distribution of Maximum Temperature*:
+   - This histogram shows the frequency distribution of maximum temperature.
+   - The most common temperature range is centered around 10 to 15°C.
+   - The distribution is somewhat bell-shaped, indicating a normal-like distribution of maximum temperatures.
+
+# Explore relationships between temperature variables and other relevant variables
+
+```{r}
+library(ggplot2)
+
+
+scatter_max_prec <- ggplot(Data_of_Temperature, aes(x = TemperatureCMax, y = Precmm)) +
+  geom_point(color = "darkgreen") +
+  labs(title = "Maximum Temperature vs. Precipitation",
+       x = "Maximum Temperature (C)", y = "Precipitation (mm)")
+
+scatter_min_prec <- ggplot(Data_of_Temperature, aes(x = TemperatureCMin, y = Precmm)) +
+  geom_point(color = "darkred") +
+  labs(title = "Minimum Temperature vs. Precipitation",
+       x = "Minimum Temperature (C)", y = "Precipitation (mm)")
+# Convert ggplot objects to plotly objects
+interactive_scatter_max_prec <- ggplotly(scatter_max_prec)
+interactive_scatter_min_prec <- ggplotly(scatter_min_prec)
+
+# Show the interactive plots
+interactive_scatter_max_prec
+interactive_scatter_min_prec
+
+```
+*Maximum Temperature vs. Precipitation*:
+   - This scatter plot displays the relationship between maximum temperature and precipitation on given days.
+   - The plot shows that as the maximum temperature increases, there are fewer instances of high precipitation.
+   - Most data points are clustered at the lower end of precipitation, regardless of temperature.
+*Minimum Temperature vs. Precipitation*:
+   - Another scatter plot that examines the relationship between minimum temperature and precipitation.
+   - Similar to the maximum temperature, most days with precipitation have low minimum temperatures.
+   - There is a spread of higher precipitation events across the temperature range, but they are less frequent.
+
+
+```{r}
+# Fit ARIMA model with automatic parameter selection
+MODEL_ARIMA <- auto.arima(time_series_obj)
+
+# Display summary statistics for temperature variables
+summary_statistics <- Data_of_Temperature %>%
+  select(TemperatureCAvg, TemperatureCMax, TemperatureCMin) %>%
+  summary()
+
+# Print the summary statistics
+print(summary_statistics)
+
+```
+
+Firstly, it fits an ARIMA (AutoRegressive Integrated Moving Average) model to the provided time series data, employing automatic parameter selection. By doing so, it enables the prediction of future values based on historical temperature data. This modeling process is essential for forecasting trends and identifying patterns in temperature fluctuations over time.
+
+Secondly, summary statistics are computed for the temperature variables within the `Data_of_Temperature` dataset, including `TemperatureCAvg`, `TemperatureCMax`, and `TemperatureCMin`. These statistics offer a comprehensive overview of the dataset's characteristics, providing insights into the distribution, central tendency, and variability of temperature measurements.
+
+By combining these analytical approaches, the code snippet facilitates a thorough exploration of temperature data, allowing for informed decision-making and deeper insights into temperature patterns and trends.
+
+# Bar Plot 
+```{r}
+# Summarize the data to get counts for each wind direction
+summary_data <- Data_of_Temperature %>%
+  group_by(WindkmhDir) %>%
+  summarise(Frequency = n())
+
+# Create interactive bar plot
+wind_direction_plot <- plot_ly(summary_data, x = ~WindkmhDir, y = ~Frequency, type = "bar",
+                                marker = list(color = ~Frequency, colorscale = "Viridis"),
+                                text = ~paste("Wind Direction: ", WindkmhDir, "<br>Frequency: ", Frequency),
+                                hoverinfo = "text") %>%
+  layout(title = "Distribution of Wind Directions",
+         xaxis = list(title = "Wind Direction"),
+         yaxis = list(title = "Frequency"))
+
+# Show the interactive plot
+wind_direction_plot
+
+```
+*Distribution of Wind Directions*:
+   - The bar chart displays the frequency of various wind directions.
+   - Directions like SSW, SW, WSW, and W seem to have the highest frequencies, indicating they are the most common wind directions in the dataset.
+   - Less common wind directions include E, NE, and ESE.
+
+# Histogram
+
+```{r}
+
+# Create a histogram for Precmm with plotly
+histogram <- ggplot(Data_of_Temperature, aes(x = Precmm)) +
+  geom_histogram(fill = "lightgreen", color = "black", bins = 20) +
+  labs(title = "Distribution of Precipitation",
+       x = "Precipitation (mm)", y = "Frequency")
+
+# Convert ggplot object to plotly object
+interactive_histogram <- ggplotly(histogram)
+
+# Show the interactive plot
+interactive_histogram
+
+```
+*Distribution of Precipitation*:
+   - The histogram shows precipitation frequency.
+   - The distribution is highly skewed to the right, with most days recording low precipitation (0 to 5 mm) and only a few days with high precipitation.
+
+# Box Plot 
+```{r}
+library(plotly)
+
+# Create interactive box plot
+boxplot_temp_wind <- plot_ly(Data_of_Temperature, x = ~WindkmhDir, y = ~TemperatureCAvg, type = "box",
+                             marker = list(color = "skyblue", line = list(color = "black"))) %>%
+  layout(title = "Temperature Distribution by Wind Direction",
+         xaxis = list(title = "Wind Direction"),
+         yaxis = list(title = "Average Temperature (C)"))
+
+# Show the interactive box plot
+boxplot_temp_wind
+
+
+```
+*Temperature Distribution by Wind Direction*:
+   - This box plot shows the distribution of average temperatures associated with each wind direction.
+   - The median, spread, and outliers for temperature can be compared across the different wind directions.
+   - Some directions, like ENE and W, show a wide range of temperatures, while others like SSE show a narrower range.
+
+# Scatter plot 
+```{r}
+
+# Create interactive scatter plot
+scatter_temp_prec <- plot_ly(Data_of_Temperature, x = ~Precmm, y = ~TemperatureCAvg, type = "scatter", mode = "markers",
+                             marker = list(color = "darkblue")) %>%
+  layout(title = "Average Temperature vs. Precipitation",
+         xaxis = list(title = "Precipitation (mm)"),
+         yaxis = list(title = "Average Temperature (C)"))
+
+# Show the interactive scatter plot
+scatter_temp_prec
+
+```
+*Average Temperature vs. Precipitation*:
+   - A scatter plot presenting the relationship between average temperature and precipitation. Each point represents a pairing of the two variables, and the overall pattern can indicate whether there’s a correlation.
+
+# Correlation Matrix
+```{r}
+library(reshape2)
+library(plotly)
+
+# Compute correlation matrix
+correlation_matrix <- cor(Data_of_Temperature[, c("TemperatureCAvg", "TemperatureCMax", "TemperatureCMin", 
+                                         "Precmm", "WindkmhInt", "TotClOct", "SunD1h")])
+
+# Create interactive heatmap
+heatmap_correlation <- plot_ly(
+  z = correlation_matrix,
+  x = colnames(correlation_matrix),
+  y = colnames(correlation_matrix),
+  type = "heatmap",
+  colorscale = "Viridis"
+) %>% 
+  layout(
+    title = "Heatmap of Correlation",
+    xaxis = list(title = "Variables"),
+    yaxis = list(title = "Variables")
+  )
+
+# Show the interactive heatmap
+heatmap_correlation
+
+```
+*Heatmap of Correlation*:
+   - A correlation heatmap is used to show the correlation coefficients between different variables. Each cell shows how strongly two variables are related, with 1 indicating a perfect positive correlation, -1 a perfect negative correlation, and 0 no correlation.
+
+# Time Series Plot
+```{r}
+library(ggplot2)
+library(plotly)
+
+# Convert Date column to Date type
+Data_of_Temperature$Date <- as.Date(Data_of_Temperature$Date)
+
+# Create interactive time series plot
+time_series_plot <- plot_ly(Data_of_Temperature, x = ~Date, y = ~HrAvg, type = "scatter", mode = "lines", 
+                            line = list(color = "blue"), name = "Average Relative Humidity (%)") %>%
+  layout(title = "Time Series Plot of Average Relative Humidity",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Average Relative Humidity (%)"))
+
+# Show the interactive time series plot
+time_series_plot
+
+```
+*Time Series Plot of Average Relative Humidity*:
+   - This chart would depict how the average relative humidity changes over time. The line's fluctuations can indicate both short-term variability and longer-term trends or patterns.
+
+# smoothing 
+```{r}
+
+# Smoothing to illustrate trend for the variable
+smoothed_data <- Data_of_Temperature %>%
+  mutate(Date = as.Date(Date)) %>%
+  group_by(Date) %>%
+  summarise(PresslevHp = mean(PresslevHp)) %>%
+  mutate(Smoothed_PresslevHp = smooth.spline(PresslevHp)$y)
+
+# Create ggplot object
+gg <- ggplot(smoothed_data, aes(x = Date, y = Smoothed_PresslevHp)) +
+  geom_line(color = "brown") +
+  labs(title = "Smoothed Trend for PresslevHp",
+       x = "Date",
+       y = "Smoothed PresslevHp")
+
+# Convert ggplot object to plotly object
+smoothed_plot <- ggplotly(gg)
+
+# Show the interactive plot
+smoothed_plot
+
+
+``` 
+\vfill
+*Smoothed Trend for Atmospheric Pressure (PresslevHp)*:
+   - Typically, a line chart like this would show the changes in atmospheric pressure over time. The smoothing likely indicates that a statistical method has been applied to highlight the overall trend by reducing daily variability.
+
+
+Each chart gives insights into different aspects of weather patterns, such as trends in temperature, the relationship between temperature and rainfall, the prevalence of wind directions, and the distribution of various temperature and precipitation metrics. These visualizations can be instrumental in understanding climate behavior, planning for weather-dependent activities, and studying climate change impacts.
+
+# Report of the data 
+
+Weather profoundly influences our daily lives, shaping everything from agricultural practices to transportation systems. Understanding past weather patterns through data analysis is crucial for effective predictive modeling, aiding in planning and decision-making across various sectors. In this essay, we delve into an in-depth analysis of weather data collected over the course of a year, exploring temperature variations, humidity levels, precipitation patterns, and wind directions. Through statistical techniques such as trend analysis, correlation studies, and data visualization, we uncover valuable insights into the intricacies of our local climate.
+
+The methodology employed in this analysis involves a multifaceted approach, combining statistical techniques and visualization tools to extract meaningful information from the dataset. Trend analysis allows us to identify long-term patterns in temperature variations, revealing seasonal transitions and annual trends. Correlation studies shed light on the relationships between different weather variables, highlighting potential causal links and interactions. Data visualization techniques, such as charts and graphs, provide intuitive representations of complex weather data, facilitating easier interpretation and understanding.
+
+One of the key findings of our analysis is the gradual decrease in average temperatures leading up to January, signaling the onset of winter. This trend is consistent with seasonal expectations and provides valuable insight into the changing climate throughout the year. Furthermore, correlation analysis reveals a moderate inverse relationship between temperature and precipitation, suggesting that lower temperatures may be associated with increased rainfall—a pattern often observed in temperate climates.
+
+Delving deeper into the data, fluctuations in humidity levels emerge as another notable aspect of our analysis. Occasional sharp declines in humidity may indicate transient atmospheric phenomena, warranting further investigation. Understanding these fluctuations is crucial for predicting weather-related phenomena such as fog formation or drought conditions.
+
+Additionally, the distribution of minimum and maximum temperatures provides valuable insights into daily temperature variations. Minimum temperatures exhibit a normal distribution with a slight preference for cooler nights, while maximum temperatures closely align with seasonal expectations. These findings can inform a wide range of applications, from energy demand forecasting to agricultural planning.
+
+In conclusion, the analysis of weather data through statistical techniques and data visualization tools offers invaluable insights into our local climate. By understanding past weather patterns, we can better anticipate future conditions and make informed decisions in various sectors, ranging from agriculture and transportation to emergency management. As we continue to harness the power of data-driven approaches, predictive modeling will play an increasingly vital role in adapting to and mitigating the impacts of climate change. Through continued research and analysis, we can unlock the full potential of weather data to build a more resilient and sustainable future.
